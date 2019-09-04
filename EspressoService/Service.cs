@@ -22,10 +22,10 @@ namespace EspressoService
         }
 
         protected override void OnStart(string[] args) 
-            => Common.WriteMsg("SoliteaWorkService - START");
+            => Common.WriteMsg("EspressoService - START");
 
         protected override void OnStop() 
-            => Common.WriteMsg("SoliteaWorkService - STOP");
+            => Common.WriteMsg("EspressoService - STOP");
 
         protected override void OnSessionChange(SessionChangeDescription changeDescription) 
             => Common.WriteMsg(changeDescription);

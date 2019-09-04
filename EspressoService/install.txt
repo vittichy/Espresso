@@ -2,7 +2,7 @@
 * install service: InstallUtil.exe + Your copied path + \your service name + .exe
 
 cd C:\Windows\Microsoft.NET\Framework\v4.0.30319
-InstallUtil.exe D:\vt-src\Espresso\EspressoService\bin\Debug\EspressoService.exe
+InstallUtil.exe D:\......\Espresso\EspressoService\bin\Debug\EspressoService.exe
 + set startup type to automatic
 
 * uninstall:
