@@ -7,6 +7,27 @@ using System.Linq;
 
 namespace Espresso.Data
 {
+    /// <summary>
+    /// read setup data from json file.
+    /// 
+    /// format:
+    /// {
+    ///     "user":"DESKTOP-2R9PJDT\\tichy",
+    ///     "daysOff":
+    ///     [ 
+    ///        "2019-10-02 off1", 
+    ///        "2019-10-03 prichod", 
+    ///     ],
+    ///     "stateHolidays":
+    ///     [ 
+    ///       "2019-09-09 XXXX",
+    ///     ],
+    ///     "remarks":
+    ///     [
+    ///       "2019-09-09 XXXX",
+    ///     ]
+    /// }
+    /// </summary>
     public class Setup
     {
         const string DATE_FORMAT = "yyyy-MM-dd";
