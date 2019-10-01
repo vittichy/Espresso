@@ -45,6 +45,13 @@ namespace Espresso
 
             setupFile.WriteInfo();
             ShowIt(logLines, setupFile);
+
+            var wantWaitForKey = WantWaitForKey(args);
+            if (wantWaitForKey || Debugger.IsAttached)
+            {
+                Console.Write("Press any key to continue...");
+                Console.ReadKey();
+            }
         }
 
 
@@ -79,7 +86,7 @@ namespace Espresso
                 var dayHours = 0d;
 
                 // teoreticke pracovni dny 
-                if (day.DayOfWeek != DayOfWeek.Saturday && day.DayOfWeek != DayOfWeek.Sunday)
+                if (IsWorkDay(day))
                 {
                     weekHoursTeo += HOURS_PER_DAY;
                     monthHoursTeo += HOURS_PER_DAY;
@@ -87,12 +94,14 @@ namespace Espresso
 
                 var logByDay = groupsByDay.FirstOrDefault(p => p.Key == day);
 
+
                 var logByDayForUser = (logByDay != null) ? logByDay.Where(p => p.message.StartsWith(setup.UserName))
                                                                             .Select(p => new DateMessage(p.date, p.message))
                                                                                 .ToList()
                                                              : new List<DateMessage>();
+                FilterSystemLogins(ref logByDayForUser);
 
-                var unlocks = logByDayForUser.Where(p => p.Message.EndsWith("SessionUnlock") || p.Message.EndsWith("SessionLogon"))
+                var unlocks = logByDayForUser.Where(p => p.IsUnLockOrLogon())
                                                 .Select(p => p.Date)
                                                     .ToList();
                 var minUnlock = GetMinTime(unlocks);
@@ -102,7 +111,7 @@ namespace Espresso
                     maxLock = DateTime.Now;
                 else
                 {
-                    var locks = logByDayForUser.Where(p => p.Message.EndsWith("SessionLock") || p.Message.EndsWith("SessionLogoff"))
+                    var locks = logByDayForUser.Where(p => p.IsLockOrLogoff())
                                                     .Select(p => p.Date)
                                                         .ToList();
                     maxLock = GetMaxTime(locks);
@@ -119,8 +128,12 @@ namespace Espresso
 
                 var stateHoliday = setup.StateHolidays.FirstOrDefault(p => p.Date.Date == day.Date);
                 if (stateHoliday != null)
-                    dayHours += HOURS_PER_DAY;
+                {
+                    // takze statni svatek - ale je to pracovni den?
+                    if (IsWorkDay(day))
+                        dayHours += HOURS_PER_DAY;
 
+                }
                 weekHours += dayHours;
                 monthHours += dayHours;
 
@@ -181,9 +194,54 @@ namespace Espresso
                 day = day.AddDays(1);
             }
             while (day <= dayLast);
+        }
 
-            if (Debugger.IsAttached)
-                Console.ReadKey();
+
+        /// <summary>
+        /// jedna se o pracovni den? (pondeli-patek)
+        /// </summary>
+        private static bool IsWorkDay(DateTime day)
+        {
+            return day.DayOfWeek != DayOfWeek.Saturday && day.DayOfWeek != DayOfWeek.Sunday;
+        }
+
+
+        /// <summary>
+        /// pokus o vyhozeni tohoto SessionLogon + SessionLock, ktere udelaji Win pri updatech:
+        /// 
+        /// 2019-09-11 17:45:39 SYSTEM SessionLogoff
+        /// 2019-09-11 17:47:22 EspressoService - START
+        /// 2019-09-11 17:47:30 SYSTEM ConsoleConnect
+        /// 2019-09-11 17:47:31 DESKTOP-2R9PJDT\tichy SessionLogon
+        /// 2019-09-11 17:47:32 DESKTOP-2R9PJDT\tichy SessionLock
+        /// 
+        /// - zkusim to poresit tak, ze je-li mezi SessionLogon + SessionLock nejaky maly casovy usek, tak udalost vyhodim
+        /// </summary>
+        /// <param name="logByDayForUser"></param>
+        private static void FilterSystemLogins(ref List<DateMessage> logByDayForUser)
+        {
+            var forDelete = new List<DateMessage>();
+            for (int i = 0; i < logByDayForUser.Count - 1; i++)
+            {
+                if (logByDayForUser[i].IsUnLockOrLogon() && logByDayForUser[i + 1].IsLockOrLogoff())
+                {
+                    var span = logByDayForUser[i + 1].Date - logByDayForUser[i].Date;
+                    if(span.TotalSeconds < 5)
+                    {
+                        forDelete.Add(logByDayForUser[i]);
+                        forDelete.Add(logByDayForUser[i + 1]);
+                    }
+                }
+            }
+
+            foreach(var fd in forDelete)
+                logByDayForUser.Remove(fd);
+        }
+
+
+        private static bool WantWaitForKey(string[] args)
+        {
+            return args != null && args.Any() && args.Contains("-waitForKey");
         }
 
 
